@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Available Picks</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <script src="app.js"></script>
+  <div class="container">
+    <h1>Available Picks</h1>
+    <form id="picks-form">
+      <ul id="picks-list"></ul>
+      <button type="submit">Submit My Picks</button>
+    </form>
+  </div>
+
+  <script>
+    const picksList = document.getElementById("picks-list");
+    const token = localStorage.getItem("token");
+
+    // Redirect if not logged in
+    if (!token) {
+      alert("Please login first.");
+      window.location.href = "login.html";
+    }
+
+    // Load picks from server
+    async function loadPicks() {
+      const res = await fetch("http://localhost:5000/api/picks", {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      const picks = await res.json();
+
+      picksList.innerHTML = picks.map(pick => `
+        <li>
+          <strong>${pick.name}</strong><br>
+          <label><input type="radio" name="${pick._id}" value="over"> Over</label>
+          <label><input type="radio" name="${pick._id}" value="under"> Under</label>
+        </li>
+      `).join("");
+    }
+
+    loadPicks();
+
+    // Handle submission
+    document.getElementById("picks-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const selections = [];
+      const radios = document.querySelectorAll("input[type='radio']:checked");
+
+      radios.forEach(radio => {
+        selections.push({
+          pickId: radio.name,
+          choice: radio.value
+        });
+      });
+
+      const res = await fetch("http://localhost:5000/api/picks/submit", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ selections })
+      });
+
+      if (res.ok) {
+        alert("Picks submitted!");
+      } else {
+        const error = await res.json();
+        alert("Failed to submit: " + (error.message || "unknown error"));
+      }
+    });
+  </script>
+</body>
+</html>

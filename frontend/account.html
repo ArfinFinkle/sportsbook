@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>My Account</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <script src="app.js"></script>
+
+  <div class="container">
+    <h1>My Account</h1>
+
+    <!-- User Info -->
+    <div id="user-info" style="margin-bottom: 20px; padding: 10px; border: 1px solid #ddd;">
+      <p><strong>Name:</strong> <span id="user-name">Loading...</span></p>
+      <p><strong>Email:</strong> <span id="user-email">Loading...</span></p>
+    </div>
+
+    <!-- Submitted Picks -->
+    <h2>My Submitted Picks</h2>
+    <div id="my-picks-container"></div>
+  </div>
+
+  <script>
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      alert("Please log in to view your account.");
+      window.location.href = "login.html";
+    }
+
+    async function loadUserInfo() {
+      const res = await fetch("http://localhost:5000/api/auth/me", {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        document.getElementById("user-name").textContent = `${data.firstName} ${data.lastName}`;
+        document.getElementById("user-email").textContent = data.email;
+      } else {
+        alert("Failed to load account info.");
+      }
+    }
+
+    async function loadMyPicks() {
+      const res = await fetch("http://localhost:5000/api/picks/my-submissions", {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+
+      const data = await res.json();
+      const container = document.getElementById("my-picks-container");
+
+      if (!Array.isArray(data) || data.length === 0) {
+        container.innerHTML = "<p>You have not submitted any picks yet.</p>";
+        return;
+      }
+
+      container.innerHTML = data.map(entry => {
+        const date = entry.createdAt
+          ? new Date(entry.createdAt).toLocaleString()
+          : "Unknown date";
+
+        const selections = entry.selections.map(sel => {
+          const pick = sel.pickId || {};
+          return `<li>${pick.name}: <strong>${sel.choice.toUpperCase()}</strong></li>`;
+        }).join("");
+
+        return `
+          <div style="border:1px solid #ccc; padding:10px; margin-bottom:15px;">
+            <p><strong>Submitted on:</strong> ${date}</p>
+            <ul>${selections}</ul>
+          </div>
+        `;
+      }).join("");
+    }
+
+    loadUserInfo();
+    loadMyPicks();
+  </script>
+</body>
+</html>

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Available Picks</title>
+  <style>
+    body { font-family: Arial; padding: 20px; }
+    form { margin-bottom: 20px; }
+    li { margin-bottom: 10px; }
+    label { margin-right: 10px; }
+  </style>
+</head>
+<body>
+  <h1>Available Picks</h1>
+  <form id="picks-form">
+    <ul id="picks-list"></ul>
+    <button type="submit">Submit My Picks</button>
+  </form>
+
+  <script>
+    const token = localStorage.getItem("token");
+    const picksList = document.getElementById("picks-list");
+
+    if (!token) {
+      alert("You must be logged in.");
+      window.location.href = "login.html";
+    }
+
+    async function loadPicks() {
+      const res = await fetch("http://localhost:5000/api/picks", {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      const picks = await res.json();
+
+      picksList.innerHTML = picks.map(pick => `
+        <li>
+          <strong>${pick.name}</strong><br>
+          <label>
+            <input type="radio" name="pick-${pick._id}" value="over"> Over
+          </label>
+          <label>
+            <input type="radio" name="pick-${pick._id}" value="under"> Under
+          </label>
+        </li>
+      `).join("");
+    }
+
+    document.getElementById("picks-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const formData = new FormData(e.target);
+      const selections = [];
+
+      for (const [key, value] of formData.entries()) {
+        const pickId = key.replace("pick-", "");
+        selections.push({ pickId, choice: value });
+      }
+
+      await fetch("http://localhost:5000/api/picks/submit", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ selections })
+      });
+
+      alert("Your picks have been submitted!");
+    });
+
+    loadPicks();
+  </script>
+</body>
+</html>

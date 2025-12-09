@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Admin Panel</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <script src="app.js"></script>
+
+  <div class="container">
+    <h1>Admin Dashboard</h1>
+
+    <!-- Add Pick -->
+    <h3>Add New Pick</h3>
+    <input type="text" id="new-pick-name" placeholder="Enter pick name">
+    <button onclick="addPick()">Add Pick</button>
+
+    <h3>Available Picks</h3>
+    <ul id="admin-pick-list"></ul>
+
+    <h3>User Submissions</h3>
+    <div id="user-picks-container"></div>
+  </div>
+
+  <script>
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      alert("Please login as admin.");
+      window.location.href = "login.html";
+    }
+
+    async function fetchPicks() {
+      const res = await fetch("http://localhost:5000/api/admin/picks", {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+
+      const picks = await res.json();
+
+      document.getElementById("admin-pick-list").innerHTML = picks.map(pick => `
+        <li>
+          ${pick.name}
+          <button onclick="deletePick('${pick._id}')">Delete</button>
+        </li>
+      `).join("");
+    }
+
+    async function addPick() {
+      const name = document.getElementById("new-pick-name").value.trim();
+      if (!name) {
+        alert("Pick name cannot be empty.");
+        return;
+      }
+
+      const res = await fetch("http://localhost:5000/api/admin/picks", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ name })
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        alert("Pick added!");
+        document.getElementById("new-pick-name").value = "";
+        fetchPicks();
+      } else {
+        alert("Failed to add pick: " + (data.message || "Unknown error"));
+      }
+    }
+
+    async function deletePick(id) {
+      if (!confirm("Delete this pick?")) return;
+
+      const res = await fetch(`http://localhost:5000/api/admin/picks/${id}`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+
+      if (res.ok) {
+        fetchPicks();
+      } else {
+        alert("Failed to delete pick.");
+      }
+    }
+
+    async function loadUserPicks() {
+      const res = await fetch("http://localhost:5000/api/admin/user-picks", {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+
+      const data = await res.json();
+      const container = document.getElementById("user-picks-container");
+
+      container.innerHTML = data.map(entry => {
+        const user = entry.user || {};
+        const date = entry.createdAt
+          ? new Date(entry.createdAt).toLocaleString()
+          : "Unknown date";
+
+        const selections = entry.selections.map(sel => {
+          const pick = sel.pickId || {};
+          return `<li>${pick.name}: <strong>${sel.choice.toUpperCase()}</strong></li>`;
+        }).join("");
+
+        return `
+          <div style="border:1px solid #ccc; padding:10px; margin-bottom:15px;">
+            <strong>${user.firstName} ${user.lastName}</strong><br>
+            <small>${user.email}</small><br>
+            <small>Submitted: ${date}</small>
+            <ul>${selections}</ul>
+            <button onclick="deleteSubmission('${entry._id}')">Delete Submission</button>
+          </div>
+        `;
+      }).join("");
+    }
+
+    async function deleteSubmission(id) {
+      if (!confirm("Delete this submission?")) return;
+
+      const res = await fetch(`http://localhost:5000/api/admin/user-picks/${id}`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+
+      if (res.ok) {
+        alert("Submission deleted.");
+        loadUserPicks();
+      } else {
+        alert("Failed to delete submission.");
+      }
+    }
+
+    fetchPicks();
+    loadUserPicks();
+  </script>
+</body>
+</html>
