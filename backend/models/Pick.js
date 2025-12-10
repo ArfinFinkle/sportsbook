@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 
 const pickSchema = new mongoose.Schema({
   name: { type: String, required: true },
-  description: { type: String },
+  description: String,
   createdAt: { type: Date, default: Date.now }
 });
 
